@@ -33,18 +33,6 @@ public class CompraService {
     public Compra salvarCompra(Compra compra) {
         Usuario usuario = usuarioService.getUsuario(compra.getUsuario());
 
-        for (Produto produto : compra.getProdutos()) {
-            Produto produtoBanco = produtoService.getProduto(produto.getId());
-            if (produtoBanco == null) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto com ID " + produto.getId() + " não encontrado.");
-            }
-            if (!produtoBanco.temEstoqdueSuficiente(produto.getQuantidadeEstoque())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estoque insuficiente para o produto: " + produtoBanco.getNome());
-            }
-            // Atualizar estoque
-            produtoBanco.reduzirEstoque(produto.getQuantidadeEstoque());
-            produtoService.atualizarProduto(produtoBanco);
-        }
         compra.setNome(usuario.getNome());
         compra.setDataCompra(LocalDateTime.now());
 

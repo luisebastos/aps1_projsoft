@@ -1,39 +1,52 @@
 package br.insper.loja.produto;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class ProdutoService {
 
-    @Autowired
-    private ProdutoRepository produtoRepository;
+    private final RestTemplate restTemplate;
 
-    public Produto criarProduto(Produto produto) {
-        return produtoRepository.save(produto);
+    public ProdutoService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
-    public Produto buscarProdutoPorId(String id) {
-        return produtoRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
+    public Produto getProduto(String id) {
+        try {
+            return restTemplate
+                    .getForEntity("http://54.232.246.117:8082/api/produto/" + id, Produto.class)
+                    .getBody();
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado");
+        }
     }
 
-    public void diminuirQuantidadeEstoque(String id, int quantidade) {
-        Produto produto = buscarProdutoPorId(id);
+    public boolean temEstoqueSuficiente(int quantidade, String id) {
+        Produto produto = getProduto(id);
+        return produto.getQuantidadeEstoque() >= quantidade;
+    }
+
+    public void reduzirEstoque(int quantidade, String id) {
+        Produto produto = getProduto(id);
+
         if (produto.getQuantidadeEstoque() < quantidade) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Estoque insuficiente");
         }
+
         produto.setQuantidadeEstoque(produto.getQuantidadeEstoque() - quantidade);
-        produtoRepository.save(produto);
+        atualizarProduto(produto);
     }
 
-    public List<Produto> listarProdutos() {
-        return produtoRepository.findAll();
+    public Produto atualizarProduto(Produto produto) {
+        try {
+            return restTemplate
+                    .postForObject("http://54.232.246.117:8082/api/produto/atualizar", produto, Produto.class);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao atualizar o produto");
+        }
     }
 }
 
